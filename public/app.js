@@ -53,7 +53,7 @@ function statusLabel(status, external = false) {
 
 function renderTerminal(appId) {
   const app = apps.find((a) => a.id === appId);
-  terminalAppName.textContent = app ? `${app.name} — terminal output` : 'Select an app to view output';
+  terminalAppName.textContent = app ? app.name : 'Select an app to view output';
   const lines = logsByApp[appId] || [];
   terminalOutput.textContent = lines.join('\n');
   terminalOutput.scrollTop = terminalOutput.scrollHeight;
@@ -76,10 +76,9 @@ function renderApps() {
             <span class="status-badge status-${status}">${status}</span>
           </div>
           <div class="app-meta">
-            <span><strong>Path:</strong> <code>${escapeHtml(app.path)}</code></span>
-            <span><strong>Command:</strong> <code>${escapeHtml(app.command)}</code></span>
-            ${app.port ? `<span><strong>Port:</strong> ${app.port}</span>` : ''}
-            ${app.pid ? `<span><strong>PID:</strong> ${app.pid}</span>` : ''}
+            <span title="${escapeHtml(app.path)}"><strong>Path:</strong> <code>${escapeHtml(app.path)}</code></span>
+            <span title="${escapeHtml(app.command)}"><strong>Cmd:</strong> <code>${escapeHtml(app.command)}</code></span>
+            ${app.port || app.pid ? `<span>${app.port ? `<strong>Port:</strong> ${app.port}` : ''}${app.port && app.pid ? ' · ' : ''}${app.pid ? `<strong>PID:</strong> ${app.pid}` : ''}</span>` : ''}
             ${isExternal ? `<span class="external-tag">Started outside Reg Starter — stop or restart from here</span>` : ''}
           </div>
           <div class="app-actions">

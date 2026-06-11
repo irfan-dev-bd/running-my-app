@@ -8,63 +8,68 @@
   </head>
   <body>
     <div class="app">
-      <header class="header">
-        <div class="header-left">
-          <div class="logo">Reg Starter</div>
-          <p class="subtitle">Control your local Reg Plus dev apps from one place</p>
-        </div>
-        <div class="header-actions">
-          <button id="rescanPortsBtn" class="btn btn-ghost" title="Re-check all configured ports">
-            Rescan Ports
-          </button>
-          <button id="reloadConfigBtn" class="btn btn-ghost" title="Reload apps.json">
-            Reload Config
-          </button>
-          <button id="startAllBtn" class="btn btn-primary">Start All</button>
-          <button id="stopAllBtn" class="btn btn-danger">Stop All</button>
-        </div>
-      </header>
+      <div class="layout">
+        <section class="dashboard">
+          <header class="header">
+            <div class="header-left">
+              <div class="logo">Reg Starter</div>
+              <p class="subtitle">Control your local Reg Plus dev apps from one place</p>
+            </div>
+            <div class="header-actions">
+              <button id="rescanPortsBtn" class="btn btn-ghost" title="Re-check all configured ports">
+                Rescan Ports
+              </button>
+              <button id="reloadConfigBtn" class="btn btn-ghost" title="Reload apps.json">
+                Reload Config
+              </button>
+              <button id="startAllBtn" class="btn btn-primary">Start All</button>
+              <button id="stopAllBtn" class="btn btn-danger">Stop All</button>
+            </div>
+          </header>
 
-      <section class="stats-bar" id="statsBar">
-        <div class="stat">
-          <span class="stat-value" id="totalCount">0</span>
-          <span class="stat-label">Total</span>
-        </div>
-        <div class="stat running">
-          <span class="stat-value" id="runningCount">0</span>
-          <span class="stat-label">Managed</span>
-        </div>
-        <div class="stat external">
-          <span class="stat-value" id="externalCount">0</span>
-          <span class="stat-label">External</span>
-        </div>
-        <div class="stat stopped">
-          <span class="stat-value" id="stoppedCount">0</span>
-          <span class="stat-label">Stopped</span>
-        </div>
-      </section>
+          <section class="stats-bar" id="statsBar">
+            <div class="stat">
+              <span class="stat-value" id="totalCount">0</span>
+              <span class="stat-label">Total</span>
+            </div>
+            <div class="stat running">
+              <span class="stat-value" id="runningCount">0</span>
+              <span class="stat-label">Managed</span>
+            </div>
+            <div class="stat external">
+              <span class="stat-value" id="externalCount">0</span>
+              <span class="stat-label">External</span>
+            </div>
+            <div class="stat stopped">
+              <span class="stat-value" id="stoppedCount">0</span>
+              <span class="stat-label">Stopped</span>
+            </div>
+          </section>
 
-      <main class="content">
-        <div id="appGrid" class="app-grid"></div>
+          <div class="app-grid-scroll">
+            <div id="appGrid" class="app-grid"></div>
+          </div>
+
+          <footer class="footer">
+            <span>Config: <code>apps.json</code></span>
+            <span id="connectionStatus" class="connection offline">Disconnected</span>
+          </footer>
+        </section>
 
         <section class="terminal-panel" id="terminalPanel">
           <div class="terminal-header">
             <div class="terminal-title">
               <span class="terminal-dot"></span>
-              <span id="terminalAppName">Select an app to view output</span>
+              <span class="terminal-heading">Active Terminal</span>
             </div>
             <div class="terminal-actions">
               <button id="clearTerminalBtn" class="btn btn-ghost btn-sm">Clear</button>
             </div>
           </div>
+          <div class="terminal-app-name" id="terminalAppName">Select an app to view output</div>
           <pre id="terminalOutput" class="terminal-output"></pre>
         </section>
-      </main>
-
-      <footer class="footer">
-        <span>Config: <code>apps.json</code></span>
-        <span id="connectionStatus" class="connection offline">Disconnected</span>
-      </footer>
+      </div>
     </div>
 
     <div id="toast" class="toast hidden"></div>
