@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Reg Starter</title>
+    <title>App Dashboard</title>
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
@@ -12,14 +12,14 @@
         <section class="dashboard">
           <header class="header">
             <div class="header-left">
-              <div class="logo">Reg Starter</div>
-              <p class="subtitle">Control your local Reg Plus dev apps from one place</p>
+              <div class="logo" id="dashboardTitle">App Dashboard</div>
+              <p class="subtitle" id="dashboardSubtitle">Start, stop, and monitor local apps from one place</p>
             </div>
             <div class="header-actions">
               <button id="rescanPortsBtn" class="btn btn-ghost" title="Re-check all configured ports">
                 Rescan Ports
               </button>
-              <button id="reloadConfigBtn" class="btn btn-ghost" title="Reload apps.json">
+              <button id="reloadConfigBtn" class="btn btn-ghost" title="Reload config file">
                 Reload Config
               </button>
               <button id="startAllBtn" class="btn btn-primary">Start All</button>
@@ -51,7 +51,7 @@
           </div>
 
           <footer class="footer">
-            <span>Config: <code>apps.json</code></span>
+            <span>Config: <code id="configFileName">apps.json</code></span>
             <span id="connectionStatus" class="connection offline">Disconnected</span>
           </footer>
         </section>

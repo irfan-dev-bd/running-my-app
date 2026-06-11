@@ -1,7 +1,7 @@
 {
-  "name": "reg-starter",
+  "name": "app-dashboard",
   "version": "1.0.0",
-  "description": "Local dashboard to start, stop, and monitor Reg Plus dev apps",
+  "description": "Config-driven local dashboard to start, stop, and monitor dev apps",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",

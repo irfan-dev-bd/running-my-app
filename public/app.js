@@ -6,9 +6,18 @@ const totalCount = document.getElementById('totalCount');
 const runningCount = document.getElementById('runningCount');
 const externalCount = document.getElementById('externalCount');
 const stoppedCount = document.getElementById('stoppedCount');
+const dashboardTitle = document.getElementById('dashboardTitle');
+const dashboardSubtitle = document.getElementById('dashboardSubtitle');
+const configFileName = document.getElementById('configFileName');
 const toast = document.getElementById('toast');
 
 let apps = [];
+let dashboard = {
+  title: 'App Dashboard',
+  subtitle: 'Start, stop, and monitor local apps from one place',
+  logPrefix: 'launcher',
+  configFile: 'apps.json',
+};
 let selectedAppId = null;
 /** @type {Record<string, string[]>} */
 const logsByApp = {};
@@ -33,6 +42,15 @@ async function api(path, options = {}) {
     throw new Error(data.error || 'Request failed');
   }
   return data;
+}
+
+function applyDashboardConfig(nextDashboard) {
+  if (!nextDashboard) return;
+  dashboard = { ...dashboard, ...nextDashboard };
+  document.title = dashboard.title;
+  dashboardTitle.textContent = dashboard.title;
+  dashboardSubtitle.textContent = dashboard.subtitle;
+  configFileName.textContent = dashboard.configFile;
 }
 
 function updateStats() {
@@ -79,7 +97,7 @@ function renderApps() {
             <span title="${escapeHtml(app.path)}"><strong>Path:</strong> <code>${escapeHtml(app.path)}</code></span>
             <span title="${escapeHtml(app.command)}"><strong>Cmd:</strong> <code>${escapeHtml(app.command)}</code></span>
             ${app.port || app.pid ? `<span>${app.port ? `<strong>Port:</strong> ${app.port}` : ''}${app.port && app.pid ? ' · ' : ''}${app.pid ? `<strong>PID:</strong> ${app.pid}` : ''}</span>` : ''}
-            ${isExternal ? `<span class="external-tag">Started outside Reg Starter — stop or restart from here</span>` : ''}
+            ${isExternal ? `<span class="external-tag">Started outside ${escapeHtml(dashboard.title)} — stop or restart from here</span>` : ''}
           </div>
           <div class="app-actions">
             <button class="btn btn-primary btn-start" data-id="${app.id}" ${isRunning || isBusy ? 'disabled' : ''}>Start</button>
@@ -135,6 +153,7 @@ function connectWebSocket() {
     const message = JSON.parse(event.data);
 
     if (message.type === 'init') {
+      applyDashboardConfig(message.dashboard);
       apps = message.apps;
       Object.assign(logsByApp, message.logs || {});
       if (!selectedAppId && apps.length > 0) {
@@ -165,6 +184,7 @@ function connectWebSocket() {
 
 async function loadApps() {
   const data = await api('/api/apps');
+  applyDashboardConfig(data.dashboard);
   apps = data.apps;
   renderApps();
 }
@@ -223,6 +243,7 @@ document.getElementById('stopAllBtn').addEventListener('click', async () => {
 document.getElementById('rescanPortsBtn').addEventListener('click', async () => {
   try {
     const data = await api('/api/rescan-ports', { method: 'POST' });
+    applyDashboardConfig(data.dashboard);
     apps = data.apps;
     renderApps();
     showToast('Ports rescanned');
@@ -234,9 +255,10 @@ document.getElementById('rescanPortsBtn').addEventListener('click', async () => 
 document.getElementById('reloadConfigBtn').addEventListener('click', async () => {
   try {
     const data = await api('/api/reload-config', { method: 'POST' });
+    applyDashboardConfig(data.dashboard);
     apps = data.apps;
     renderApps();
-    showToast('Config reloaded from apps.json');
+    showToast(`Config reloaded from ${dashboard.configFile}`);
   } catch (err) {
     showToast(err.message, true);
   }

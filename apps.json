@@ -1,4 +1,10 @@
 {
+  "dashboard": {
+    "title": "Dev Dashboard",
+    "subtitle": "Start, stop, and monitor local apps from one place",
+    "logPrefix": "launcher",
+    "configFile": "apps.json"
+  },
   "apps": [
     {
       "id": "regplus-container",

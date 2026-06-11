@@ -29,9 +29,24 @@ const EXTERNAL_SYNC_INTERVAL_MS = 10000;
 /** @type {Set<import('ws').WebSocket>} */
 const clients = new Set();
 
+const DEFAULT_DASHBOARD = {
+  title: 'App Dashboard',
+  subtitle: 'Start, stop, and monitor local apps from one place',
+  logPrefix: 'launcher',
+  configFile: 'apps.json',
+};
+
 function readConfig() {
   const raw = fs.readFileSync(CONFIG_PATH, 'utf8');
   return JSON.parse(raw);
+}
+
+function getDashboardConfig(config = readConfig()) {
+  return { ...DEFAULT_DASHBOARD, ...(config.dashboard ?? {}) };
+}
+
+function logTag(config = readConfig()) {
+  return getDashboardConfig(config).logPrefix;
 }
 
 function broadcast(message) {
@@ -149,7 +164,7 @@ function applyExternalInspection(appDef, listening, pid, options = {}) {
       if (logDetection && !wasExternal) {
         appendLog(
           appDef.id,
-          `[reg-starter] Detected existing process on port ${appDef.port}${pid ? ` (PID: ${pid})` : ' (PID unknown)'}`
+          `[${logTag()}] Detected existing process on port ${appDef.port}${pid ? ` (PID: ${pid})` : ' (PID unknown)'}`
         );
       }
       changed = true;
@@ -244,7 +259,7 @@ async function startApp(appId) {
   const config = readConfig();
   const appDef = config.apps.find((a) => a.id === appId);
   if (!appDef) {
-    throw new Error(`App "${appId}" not found in apps.json`);
+    throw new Error(`App "${appId}" not found in config`);
   }
 
   const runtime = ensureRuntime(appDef);
@@ -272,9 +287,10 @@ async function startApp(appId) {
   runtime.command = appDef.command;
   setStatus(appId, 'starting');
 
-  appendLog(appId, `[reg-starter] Starting "${appDef.name}"`);
-  appendLog(appId, `[reg-starter] cd ${appDef.path}`);
-  appendLog(appId, `[reg-starter] ${appDef.command}`);
+  const tag = logTag(config);
+  appendLog(appId, `[${tag}] Starting "${appDef.name}"`);
+  appendLog(appId, `[${tag}] cd ${appDef.path}`);
+  appendLog(appId, `[${tag}] ${appDef.command}`);
   appendLog(appId, '');
 
   const shell = process.platform === 'win32' ? 'cmd.exe' : '/bin/bash';
@@ -293,14 +309,14 @@ async function startApp(appId) {
   child.stderr.on('data', (data) => appendLog(appId, data.toString()));
 
   child.on('close', (code) => {
-    appendLog(appId, `\n[reg-starter] Process exited with code ${code ?? 'unknown'}`);
+    appendLog(appId, `\n[${logTag()}] Process exited with code ${code ?? 'unknown'}`);
     runtime.proc = null;
     runtime.externalPid = null;
     setStatus(appId, 'stopped');
   });
 
   child.on('error', (err) => {
-    appendLog(appId, `[reg-starter] Error: ${err.message}`);
+    appendLog(appId, `[${logTag()}] Error: ${err.message}`);
     runtime.proc = null;
     runtime.externalPid = null;
     setStatus(appId, 'stopped');
@@ -314,7 +330,7 @@ async function stopApp(appId) {
 
   if (runtime?.proc && !runtime.proc.killed) {
     setStatus(appId, 'stopping');
-    appendLog(appId, '\n[reg-starter] Stopping...');
+    appendLog(appId, `\n[${logTag()}] Stopping...`);
 
     const pid = runtime.proc.pid;
     runtime.proc.kill();
@@ -336,7 +352,7 @@ async function stopApp(appId) {
 
   if (isKillablePid(pid)) {
     setStatus(appId, 'stopping');
-    appendLog(appId, '\n[reg-starter] Stopping external process...');
+    appendLog(appId, `\n[${logTag()}] Stopping external process...`);
     await killProcessTree(pid);
     if (runtime) runtime.externalPid = null;
     setStatus(appId, 'stopped');
@@ -346,7 +362,7 @@ async function stopApp(appId) {
   if (appDef?.port && (await checkPortInUse(appDef.port))) {
     appendLog(
       appId,
-      '\n[reg-starter] Port is in use but the owning PID could not be determined. Stop it manually, then try again.'
+      `\n[${logTag()}] Port is in use but the owning PID could not be determined. Stop it manually, then try again.`
     );
     setStatus(appId, 'running');
     return { stopped: false, error: 'Could not determine PID for external process' };
@@ -363,15 +379,20 @@ async function restartApp(appId) {
   return startApp(appId);
 }
 
+app.get('/api/config', (_req, res) => {
+  const config = readConfig();
+  res.json({ dashboard: getDashboardConfig(config) });
+});
+
 app.get('/api/apps', async (_req, res) => {
   await syncExternalProcesses({ logDetection: false });
-  res.json({ apps: getAppsWithStatus() });
+  res.json({ apps: getAppsWithStatus(), dashboard: getDashboardConfig() });
 });
 
 app.post('/api/rescan-ports', async (_req, res) => {
   try {
     await syncExternalProcesses({ logDetection: true, broadcastUpdate: true });
-    res.json({ ok: true, apps: getAppsWithStatus() });
+    res.json({ ok: true, apps: getAppsWithStatus(), dashboard: getDashboardConfig() });
   } catch (err) {
     res.status(400).json({ ok: false, error: err.message });
   }
@@ -445,7 +466,7 @@ app.post('/api/reload-config', async (_req, res) => {
       ensureRuntime(appDef);
     }
     await syncExternalProcesses();
-    res.json({ ok: true, apps: getAppsWithStatus() });
+    res.json({ ok: true, apps: getAppsWithStatus(), dashboard: getDashboardConfig() });
   } catch (err) {
     res.status(400).json({ ok: false, error: err.message });
   }
@@ -465,6 +486,7 @@ wss.on('connection', (ws) => {
       ws.send(
         JSON.stringify({
           type: 'init',
+          dashboard: getDashboardConfig(),
           apps: getAppsWithStatus(),
           logs: Object.fromEntries(
             [...processes.entries()].map(([id, runtime]) => [id, runtime.logs])
@@ -477,6 +499,7 @@ wss.on('connection', (ws) => {
       ws.send(
         JSON.stringify({
           type: 'init',
+          dashboard: getDashboardConfig(),
           apps: getAppsWithStatus(),
           logs: Object.fromEntries(
             [...processes.entries()].map(([id, runtime]) => [id, runtime.logs])
@@ -496,9 +519,11 @@ async function bootstrap() {
 
   await syncExternalProcesses({ logDetection: true, broadcastUpdate: false });
 
+  const dashboard = getDashboardConfig(config);
+
   server.listen(PORT, () => {
-    console.log(`Reg Starter running at http://localhost:${PORT}`);
-    console.log(`Edit apps in ${CONFIG_PATH}`);
+    console.log(`${dashboard.title} running at http://localhost:${PORT}`);
+    console.log(`Edit config in ${CONFIG_PATH}`);
 
     setInterval(() => {
       syncExternalProcesses({ broadcastUpdate: true, logDetection: false }).catch(() => {});
@@ -507,7 +532,7 @@ async function bootstrap() {
 }
 
 bootstrap().catch((err) => {
-  console.error('Failed to start Reg Starter:', err);
+  console.error('Failed to start dashboard:', err);
   process.exit(1);
 });
 
