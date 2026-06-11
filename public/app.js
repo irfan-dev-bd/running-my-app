@@ -50,7 +50,7 @@ function applyDashboardConfig(nextDashboard) {
   document.title = dashboard.title;
   dashboardTitle.textContent = dashboard.title;
   dashboardSubtitle.textContent = dashboard.subtitle;
-  configFileName.textContent = dashboard.configFile;
+  configFileName.textContent = dashboard.configPath || dashboard.configFile;
 }
 
 function updateStats() {
@@ -153,8 +153,12 @@ function connectWebSocket() {
     const message = JSON.parse(event.data);
 
     if (message.type === 'init') {
+      if (message.configured === false) {
+        window.location.href = '/setup.html';
+        return;
+      }
       applyDashboardConfig(message.dashboard);
-      apps = message.apps;
+      apps = message.apps || [];
       Object.assign(logsByApp, message.logs || {});
       if (!selectedAppId && apps.length > 0) {
         selectedAppId = apps[0].id;
@@ -182,7 +186,20 @@ function connectWebSocket() {
   };
 }
 
+async function ensureConfigured() {
+  const response = await fetch('/api/setup/status');
+  const status = await response.json();
+  if (!status.configured) {
+    window.location.href = '/setup.html';
+    return false;
+  }
+  return true;
+}
+
 async function loadApps() {
+  const configured = await ensureConfigured();
+  if (!configured) return;
+
   const data = await api('/api/apps');
   applyDashboardConfig(data.dashboard);
   apps = data.apps;
@@ -270,5 +287,13 @@ document.getElementById('clearTerminalBtn').addEventListener('click', () => {
   renderTerminal(selectedAppId);
 });
 
-connectWebSocket();
-loadApps().catch((err) => showToast(err.message, true));
+document.getElementById('settingsBtn').addEventListener('click', () => {
+  window.location.href = '/settings.html';
+});
+
+ensureConfigured().then((configured) => {
+  if (configured) {
+    connectWebSocket();
+    loadApps().catch((err) => showToast(err.message, true));
+  }
+});

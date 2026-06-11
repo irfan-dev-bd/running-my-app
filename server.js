@@ -6,11 +6,14 @@ const fs = require('fs');
 const { spawn, exec } = require('child_process');
 const { promisify } = require('util');
 const { WebSocketServer } = require('ws');
+const configLib = require('./lib/config');
+const templatesLib = require('./lib/templates');
+const fsBrowse = require('./lib/fsBrowse');
+const { getConfigPath, getUserDataDir } = require('./lib/paths');
 
 const execAsync = promisify(exec);
 
 const PORT = process.env.PORT || 3000;
-const CONFIG_PATH = path.join(__dirname, 'apps.json');
 const MAX_LOG_LINES = 500;
 
 const app = express();
@@ -29,24 +32,26 @@ const EXTERNAL_SYNC_INTERVAL_MS = 10000;
 /** @type {Set<import('ws').WebSocket>} */
 const clients = new Set();
 
-const DEFAULT_DASHBOARD = {
-  title: 'App Dashboard',
-  subtitle: 'Start, stop, and monitor local apps from one place',
-  logPrefix: 'launcher',
-  configFile: 'apps.json',
-};
-
 function readConfig() {
-  const raw = fs.readFileSync(CONFIG_PATH, 'utf8');
-  return JSON.parse(raw);
+  return configLib.readConfig();
 }
 
-function getDashboardConfig(config = readConfig()) {
-  return { ...DEFAULT_DASHBOARD, ...(config.dashboard ?? {}) };
+function getDashboardConfig(config) {
+  return configLib.getDashboardConfig(config);
 }
 
-function logTag(config = readConfig()) {
-  return getDashboardConfig(config).logPrefix;
+function logTag(config) {
+  if (config) {
+    return configLib.getDashboardConfig(config).logPrefix;
+  }
+  return configLib.getDashboardConfig(configLib.readConfigOrNull()).logPrefix;
+}
+
+function requireConfigured(req, res, next) {
+  if (!configLib.isConfigured()) {
+    return res.status(409).json({ ok: false, error: 'Setup required' });
+  }
+  next();
 }
 
 function broadcast(message) {
@@ -379,17 +384,93 @@ async function restartApp(appId) {
   return startApp(appId);
 }
 
-app.get('/api/config', (_req, res) => {
+app.get('/api/setup/status', (_req, res) => {
+  res.json({
+    configured: configLib.isConfigured(),
+    configPath: getConfigPath(),
+    userDataDir: getUserDataDir(),
+  });
+});
+
+app.get('/api/templates', (_req, res) => {
+  res.json({ templates: templatesLib.listTemplates() });
+});
+
+app.get('/api/templates/:id', (req, res) => {
+  try {
+    const template = templatesLib.getTemplate(req.params.id);
+    res.json({ ok: true, ...template });
+  } catch (err) {
+    res.status(err.code === 'NOT_FOUND' ? 404 : 400).json({ ok: false, error: err.message });
+  }
+});
+
+app.get('/api/config/full', requireConfigured, (_req, res) => {
+  res.json({ ok: true, config: readConfig(), configPath: getConfigPath() });
+});
+
+app.put('/api/config', async (req, res) => {
+  try {
+    const result = configLib.writeConfig(req.body);
+    for (const appDef of result.config.apps) {
+      ensureRuntime(appDef);
+    }
+    await syncExternalProcesses({ logDetection: false });
+    res.json({
+      ok: true,
+      warnings: result.warnings,
+      configPath: result.configPath,
+      config: result.config,
+      dashboard: getDashboardConfig(result.config),
+    });
+  } catch (err) {
+    res.status(400).json({
+      ok: false,
+      error: err.message,
+      validation: err.validation ?? null,
+    });
+  }
+});
+
+app.delete('/api/config', requireConfigured, async (_req, res) => {
+  try {
+    for (const id of [...processes.keys()]) {
+      await stopApp(id);
+    }
+    processes.clear();
+    configLib.deleteConfig();
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(400).json({ ok: false, error: err.message });
+  }
+});
+
+app.get('/api/fs/browse', (req, res) => {
+  try {
+    const result = fsBrowse.listDirectory(req.query.path);
+    res.json({ ok: true, ...result });
+  } catch (err) {
+    res.status(400).json({ ok: false, error: err.message });
+  }
+});
+
+app.post('/api/config/validate', (req, res) => {
+  const normalized = configLib.normalizeConfig(req.body);
+  const validation = configLib.validateConfig(normalized);
+  res.json({ ok: validation.ok, ...validation, config: normalized });
+});
+
+app.get('/api/config', requireConfigured, (_req, res) => {
   const config = readConfig();
   res.json({ dashboard: getDashboardConfig(config) });
 });
 
-app.get('/api/apps', async (_req, res) => {
+app.get('/api/apps', requireConfigured, async (_req, res) => {
   await syncExternalProcesses({ logDetection: false });
   res.json({ apps: getAppsWithStatus(), dashboard: getDashboardConfig() });
 });
 
-app.post('/api/rescan-ports', async (_req, res) => {
+app.post('/api/rescan-ports', requireConfigured, async (_req, res) => {
   try {
     await syncExternalProcesses({ logDetection: true, broadcastUpdate: true });
     res.json({ ok: true, apps: getAppsWithStatus(), dashboard: getDashboardConfig() });
@@ -398,7 +479,7 @@ app.post('/api/rescan-ports', async (_req, res) => {
   }
 });
 
-app.post('/api/apps/:id/start', async (req, res) => {
+app.post('/api/apps/:id/start', requireConfigured, async (req, res) => {
   try {
     const result = await startApp(req.params.id);
     res.json({ ok: true, ...result, apps: getAppsWithStatus() });
@@ -407,7 +488,7 @@ app.post('/api/apps/:id/start', async (req, res) => {
   }
 });
 
-app.post('/api/apps/:id/stop', async (req, res) => {
+app.post('/api/apps/:id/stop', requireConfigured, async (req, res) => {
   try {
     const result = await stopApp(req.params.id);
     res.json({ ok: true, ...result, apps: getAppsWithStatus() });
@@ -416,7 +497,7 @@ app.post('/api/apps/:id/stop', async (req, res) => {
   }
 });
 
-app.post('/api/apps/:id/restart', async (req, res) => {
+app.post('/api/apps/:id/restart', requireConfigured, async (req, res) => {
   try {
     const result = await restartApp(req.params.id);
     res.json({ ok: true, ...result, apps: getAppsWithStatus() });
@@ -425,7 +506,7 @@ app.post('/api/apps/:id/restart', async (req, res) => {
   }
 });
 
-app.post('/api/start-all', async (_req, res) => {
+app.post('/api/start-all', requireConfigured, async (_req, res) => {
   const config = readConfig();
   const results = [];
 
@@ -442,7 +523,7 @@ app.post('/api/start-all', async (_req, res) => {
   res.json({ ok: true, results, apps: getAppsWithStatus() });
 });
 
-app.post('/api/stop-all', async (_req, res) => {
+app.post('/api/stop-all', requireConfigured, async (_req, res) => {
   await syncExternalProcesses();
   const config = readConfig();
   const results = [];
@@ -459,7 +540,7 @@ app.post('/api/stop-all', async (_req, res) => {
   res.json({ ok: true, results, apps: getAppsWithStatus() });
 });
 
-app.post('/api/reload-config', async (_req, res) => {
+app.post('/api/reload-config', requireConfigured, async (_req, res) => {
   try {
     const config = readConfig();
     for (const appDef of config.apps) {
@@ -472,7 +553,7 @@ app.post('/api/reload-config', async (_req, res) => {
   }
 });
 
-app.get('/api/apps/:id/logs', (req, res) => {
+app.get('/api/apps/:id/logs', requireConfigured, (req, res) => {
   const runtime = processes.get(req.params.id);
   res.json({ logs: runtime?.logs ?? [] });
 });
@@ -480,52 +561,66 @@ app.get('/api/apps/:id/logs', (req, res) => {
 wss.on('connection', (ws) => {
   clients.add(ws);
 
-  syncExternalProcesses({ logDetection: false })
-    .then(() => {
-      if (ws.readyState !== 1) return;
+  const sendInit = async () => {
+    if (ws.readyState !== 1) return;
+
+    if (!configLib.isConfigured()) {
       ws.send(
         JSON.stringify({
           type: 'init',
+          configured: false,
           dashboard: getDashboardConfig(),
-          apps: getAppsWithStatus(),
-          logs: Object.fromEntries(
-            [...processes.entries()].map(([id, runtime]) => [id, runtime.logs])
-          ),
         })
       );
-    })
-    .catch(() => {
-      if (ws.readyState !== 1) return;
-      ws.send(
-        JSON.stringify({
-          type: 'init',
-          dashboard: getDashboardConfig(),
-          apps: getAppsWithStatus(),
-          logs: Object.fromEntries(
-            [...processes.entries()].map(([id, runtime]) => [id, runtime.logs])
-          ),
-        })
-      );
-    });
+      return;
+    }
+
+    try {
+      await syncExternalProcesses({ logDetection: false });
+    } catch {
+      // ignore sync errors during init
+    }
+
+    ws.send(
+      JSON.stringify({
+        type: 'init',
+        configured: true,
+        dashboard: getDashboardConfig(),
+        apps: getAppsWithStatus(),
+        logs: Object.fromEntries(
+          [...processes.entries()].map(([id, runtime]) => [id, runtime.logs])
+        ),
+      })
+    );
+  };
+
+  sendInit().catch(() => {});
 
   ws.on('close', () => clients.delete(ws));
 });
 
 async function bootstrap() {
-  const config = readConfig();
-  for (const appDef of config.apps) {
-    ensureRuntime(appDef);
+  if (configLib.isConfigured()) {
+    const config = readConfig();
+    for (const appDef of config.apps) {
+      ensureRuntime(appDef);
+    }
+    await syncExternalProcesses({ logDetection: true, broadcastUpdate: false });
   }
 
-  await syncExternalProcesses({ logDetection: true, broadcastUpdate: false });
-
-  const dashboard = getDashboardConfig(config);
-
   server.listen(PORT, () => {
-    console.log(`${dashboard.title} running at http://localhost:${PORT}`);
-    console.log(`Edit config in ${CONFIG_PATH}`);
+    const configPath = getConfigPath();
+    if (configLib.isConfigured()) {
+      const dashboard = getDashboardConfig();
+      console.log(`${dashboard.title} running at http://localhost:${PORT}`);
+    } else {
+      console.log(`Reg-Starter running at http://localhost:${PORT}`);
+      console.log('Setup required — open the URL in your browser to configure');
+    }
+    console.log(`Config: ${configPath}`);
 
     setInterval(() => {
+      if (!configLib.isConfigured()) return;
       syncExternalProcesses({ broadcastUpdate: true, logDetection: false }).catch(() => {});
     }, EXTERNAL_SYNC_INTERVAL_MS);
   });

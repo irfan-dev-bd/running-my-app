@@ -1,0 +1,17 @@
+{
+  "dashboard": {
+    "title": "My Dev Dashboard",
+    "subtitle": "Start, stop, and monitor local apps from one place",
+    "logPrefix": "launcher",
+    "configFile": "apps.json"
+  },
+  "apps": [
+    {
+      "id": "my-app",
+      "name": "My App",
+      "path": "C:\\projects\\my-app",
+      "command": "npm start",
+      "port": 3000
+    }
+  ]
+}

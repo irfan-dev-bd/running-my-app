@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Setup — Reg-Starter</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body class="setup-body">
+    <div class="setup-page">
+      <header class="setup-header">
+        <div>
+          <h1>Reg-Starter Setup</h1>
+          <p class="subtitle">Configure your local dev environment. No login — settings are saved on your machine.</p>
+        </div>
+        <p class="setup-meta" id="configPathHint"></p>
+      </header>
+
+      <div class="stepper" id="stepper">
+        <div class="step active" data-step="1">1. Choose method</div>
+        <div class="step" data-step="2">2. Configure</div>
+        <div class="step" data-step="3">3. Review &amp; save</div>
+      </div>
+
+      <section class="setup-panel" id="step1Panel">
+        <div class="method-grid">
+          <button type="button" class="method-card" data-method="template">
+            <h3>Use a template</h3>
+            <p>Download a starter JSON file, edit paths locally, then import it.</p>
+          </button>
+          <button type="button" class="method-card" data-method="import">
+            <h3>Import JSON</h3>
+            <p>Upload a config file or paste JSON you already prepared.</p>
+          </button>
+          <button type="button" class="method-card" data-method="manual">
+            <h3>Build manually</h3>
+            <p>Add apps one by one with name, folder path, and command.</p>
+          </button>
+        </div>
+
+        <div class="setup-subpanel hidden" id="templatePanel">
+          <h3>Templates</h3>
+          <p class="muted">Download a template, update the paths on your machine, then import it in the next step.</p>
+          <div class="template-grid" id="templateGrid"></div>
+        </div>
+
+        <div class="setup-subpanel hidden" id="importPanel">
+          <h3>Import configuration</h3>
+          <label class="field">
+            <span>Upload JSON file</span>
+            <input type="file" id="importFile" accept=".json,application/json" />
+          </label>
+          <label class="field">
+            <span>Or paste JSON</span>
+            <textarea id="importText" rows="12" placeholder='{"dashboard": {...}, "apps": [...]}'></textarea>
+          </label>
+          <button type="button" class="btn btn-primary" id="parseImportBtn">Continue with imported config</button>
+        </div>
+      </section>
+
+      <section class="setup-panel hidden" id="step2Panel">
+        <div id="manualEditorHost"></div>
+        <div class="setup-actions">
+          <button type="button" class="btn btn-ghost" id="backToStep1Btn">Back</button>
+          <button type="button" class="btn btn-primary" id="toReviewBtn">Review</button>
+        </div>
+      </section>
+
+      <section class="setup-panel hidden" id="step3Panel">
+        <div id="reviewHost"></div>
+        <div class="setup-actions">
+          <button type="button" class="btn btn-ghost" id="backToStep2Btn">Back</button>
+          <button type="button" class="btn btn-primary" id="saveConfigBtn">Save and open dashboard</button>
+        </div>
+      </section>
+    </div>
+
+    <div id="toast" class="toast hidden"></div>
+
+    <script src="config-editor.js"></script>
+    <script src="setup.js"></script>
+  </body>
+</html>

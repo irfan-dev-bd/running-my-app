@@ -1,0 +1,20 @@
+[
+  {
+    "id": "minimal",
+    "name": "Minimal",
+    "description": "Single app — good starting point for one local service.",
+    "file": "minimal.json"
+  },
+  {
+    "id": "multi-service",
+    "name": "Multi-service",
+    "description": "API server plus web client — common full-stack layout.",
+    "file": "multi-service.json"
+  },
+  {
+    "id": "example-stack",
+    "name": "Example stack",
+    "description": "Several services with placeholder paths — edit before use.",
+    "file": "example-stack.json"
+  }
+]
