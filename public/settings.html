@@ -7,11 +7,11 @@
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body class="setup-body">
-    <div class="setup-page">
+    <div class="setup-page settings-page">
       <header class="setup-header">
         <div>
           <h1>Settings</h1>
-          <p class="subtitle">Edit your local configuration, export a backup, or reset setup.</p>
+          <p class="subtitle">Edit apps, import JSON, or load a template. Save when you are done.</p>
         </div>
         <div class="setup-header-actions">
           <a href="/" class="btn btn-ghost">Back to dashboard</a>
@@ -20,12 +20,39 @@
 
       <p class="setup-meta" id="configPathHint"></p>
 
-      <section class="setup-panel">
+      <nav class="settings-tabs" id="settingsTabs">
+        <button type="button" class="settings-tab active" data-tab="edit">Edit apps</button>
+        <button type="button" class="settings-tab" data-tab="import">Import JSON</button>
+        <button type="button" class="settings-tab" data-tab="template">Templates</button>
+      </nav>
+
+      <section class="setup-panel tab-panel" id="editPanel">
+        <p class="muted panel-hint">Add or remove apps below. Use <strong>Add app</strong> for new entries, then save.</p>
         <div id="manualEditorHost"></div>
-        <div id="reviewHost" class="hidden"></div>
       </section>
 
-      <section class="setup-panel settings-actions-panel">
+      <section class="setup-panel tab-panel hidden" id="importPanel">
+        <h3>Import configuration</h3>
+        <p class="muted">Upload or paste JSON to load it into the editor. Switch to <strong>Edit apps</strong> to tweak, then save.</p>
+        <label class="field">
+          <span>Upload JSON file</span>
+          <input type="file" id="importFile" accept=".json,application/json" />
+        </label>
+        <label class="field">
+          <span>Or paste JSON</span>
+          <textarea id="importText" rows="12" placeholder='{"dashboard": {...}, "apps": [...]}'></textarea>
+        </label>
+        <button type="button" class="btn btn-primary" id="applyImportBtn">Load into editor</button>
+      </section>
+
+      <section class="setup-panel tab-panel hidden" id="templatePanel">
+        <h3>Templates</h3>
+        <p class="muted">Load a template into the editor, update paths, then save. Download first if you want to edit offline.</p>
+        <div class="template-grid" id="templateGrid"></div>
+      </section>
+
+      <section class="setup-panel">
+        <div id="reviewHost" class="hidden"></div>
         <div class="setup-actions spread">
           <div class="action-group">
             <button type="button" class="btn btn-primary" id="saveSettingsBtn">Save changes</button>

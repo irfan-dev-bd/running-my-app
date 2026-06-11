@@ -35,7 +35,7 @@ function setStep(step) {
 }
 
 async function checkSetupStatus() {
-  const status = await fetch('/api/setup/status').then((r) => r.json());
+  const status = await ConfigEditor.api('/api/setup/status');
   document.getElementById('configPathHint').textContent = `Config will be saved to: ${status.configPath}`;
   if (status.configured) {
     window.location.href = '/';

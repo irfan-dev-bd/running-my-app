@@ -748,6 +748,53 @@ body {
   padding: 0;
 }
 
+.settings-page {
+  max-width: 1100px;
+}
+
+.settings-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.settings-tab {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text-muted);
+  padding: 10px 16px;
+  font: inherit;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
+}
+
+.settings-tab:hover {
+  color: var(--text);
+  background: var(--surface-hover);
+}
+
+.settings-tab.active {
+  color: var(--text);
+  border-color: var(--primary);
+  background: var(--surface-hover);
+}
+
+.tab-panel.hidden {
+  display: none;
+}
+
+.panel-hint {
+  margin: 0 0 16px;
+}
+
+.setup-panel h3 {
+  margin: 0 0 8px;
+  font-size: 1rem;
+}
+
 .review-table-wrap {
   overflow: auto;
 }

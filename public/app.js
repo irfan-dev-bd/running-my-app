@@ -37,7 +37,27 @@ async function api(path, options = {}) {
     headers: { 'Content-Type': 'application/json' },
     ...options,
   });
-  const data = await response.json();
+
+  const contentType = response.headers.get('content-type') || '';
+  const isJson = contentType.includes('application/json');
+  const body = await response.text();
+
+  if (!isJson) {
+    if (body.trimStart().startsWith('<!DOCTYPE') || body.trimStart().startsWith('<html')) {
+      throw new Error(
+        'Server returned a page instead of JSON. Restart the dashboard (npm start) and try again.'
+      );
+    }
+    throw new Error(body.trim() || `Request failed (${response.status})`);
+  }
+
+  let data;
+  try {
+    data = JSON.parse(body);
+  } catch {
+    throw new Error('Server returned invalid JSON. Restart the dashboard and try again.');
+  }
+
   if (!response.ok) {
     throw new Error(data.error || 'Request failed');
   }
@@ -187,8 +207,7 @@ function connectWebSocket() {
 }
 
 async function ensureConfigured() {
-  const response = await fetch('/api/setup/status');
-  const status = await response.json();
+  const status = await api('/api/setup/status');
   if (!status.configured) {
     window.location.href = '/setup.html';
     return false;
