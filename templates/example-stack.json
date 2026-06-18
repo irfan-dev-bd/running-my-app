@@ -1,0 +1,59 @@
+{
+  "dashboard": {
+    "title": "Example Stack",
+    "subtitle": "Replace placeholder paths with your local project folders",
+    "logPrefix": "launcher",
+    "configFile": "apps.json"
+  },
+  "apps": [
+    {
+      "id": "container",
+      "name": "Container Service",
+      "path": "C:\\projects\\my-stack\\container",
+      "command": "npm start",
+      "port": 9000
+    },
+    {
+      "id": "auth",
+      "name": "Auth Service",
+      "path": "C:\\projects\\my-stack\\auth",
+      "command": "npm start -- --port 8502",
+      "port": 8502
+    },
+    {
+      "id": "brief",
+      "name": "Brief Service",
+      "path": "C:\\projects\\my-stack\\brief",
+      "command": "npm start -- --port 8504",
+      "port": 8504
+    },
+    {
+      "id": "client-a",
+      "name": "Client A",
+      "path": "C:\\projects\\my-stack\\client-a",
+      "command": "npm start -- --port 8501",
+      "port": 8501
+    },
+    {
+      "id": "client-b",
+      "name": "Client B",
+      "path": "C:\\projects\\my-stack\\client-b",
+      "command": "npm start -- --port 8500",
+      "port": 8500
+    },
+    {
+      "id": "data-viewer",
+      "name": "Data Viewer",
+      "path": "C:\\projects\\my-stack\\data-viewer",
+      "command": "npm start -- --port 8505",
+      "port": 8505
+    },
+    {
+      "id": "mapper",
+      "name": "Mapper Service",
+      "path": "C:\\projects\\my-stack\\mapper",
+      "command": "npm start -- --port 8503",
+      "port": 8503
+    }
+  ]
+}
