@@ -89,11 +89,94 @@ function statusLabel(status, external = false) {
   return status || 'stopped';
 }
 
+const ANSI_PALETTE = [
+  '#2d2d2d', '#cc3333', '#33aa33', '#aaaa33',
+  '#5577dd', '#aa33aa', '#33aaaa', '#bbbbbb',
+  '#666666', '#ff5555', '#55dd55', '#ffff55',
+  '#7788ff', '#ff55ff', '#55dddd', '#ffffff',
+];
+
+function ansiToHtml(line) {
+  function esc(s) {
+    return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+
+  function idxToColor(idx) {
+    if (idx < 16) return ANSI_PALETTE[idx];
+    if (idx < 232) {
+      const n = idx - 16;
+      const r = Math.floor(n / 36) * 51;
+      const g = Math.floor((n % 36) / 6) * 51;
+      const b = (n % 6) * 51;
+      return `rgb(${r},${g},${b})`;
+    }
+    const v = 8 + (idx - 232) * 10;
+    return `rgb(${v},${v},${v})`;
+  }
+
+  const segments = [];
+  let fg = null, bg = null, bold = false, underline = false, dim = false;
+  const re = /\x1b\[([0-9;]*)([A-Za-z])/g;
+  let last = 0;
+
+  for (const m of line.matchAll(re)) {
+    if (m.index > last) {
+      segments.push({ text: line.slice(last, m.index), fg, bg, bold, underline, dim });
+    }
+    last = m.index + m[0].length;
+
+    if (m[2] !== 'm') continue;
+
+    const codes = m[1] === '' ? [0] : m[1].split(';').map(Number);
+    let i = 0;
+    while (i < codes.length) {
+      const c = codes[i];
+      if (c === 0) { fg = null; bg = null; bold = false; underline = false; dim = false; }
+      else if (c === 1) bold = true;
+      else if (c === 2) dim = true;
+      else if (c === 4) underline = true;
+      else if (c === 22) { bold = false; dim = false; }
+      else if (c === 24) underline = false;
+      else if (c >= 30 && c <= 37) fg = ANSI_PALETTE[c - 30];
+      else if (c === 38) {
+        if (codes[i + 1] === 5 && i + 2 < codes.length) { fg = idxToColor(codes[i + 2]); i += 2; }
+        else if (codes[i + 1] === 2 && i + 4 < codes.length) { fg = `rgb(${codes[i+2]},${codes[i+3]},${codes[i+4]})`; i += 4; }
+      }
+      else if (c === 39) fg = null;
+      else if (c >= 40 && c <= 47) bg = ANSI_PALETTE[c - 40];
+      else if (c === 48) {
+        if (codes[i + 1] === 5 && i + 2 < codes.length) { bg = idxToColor(codes[i + 2]); i += 2; }
+        else if (codes[i + 1] === 2 && i + 4 < codes.length) { bg = `rgb(${codes[i+2]},${codes[i+3]},${codes[i+4]})`; i += 4; }
+      }
+      else if (c === 49) bg = null;
+      else if (c >= 90 && c <= 97) fg = ANSI_PALETTE[c - 82];
+      else if (c >= 100 && c <= 107) bg = ANSI_PALETTE[c - 92];
+      i++;
+    }
+  }
+
+  if (last < line.length) {
+    segments.push({ text: line.slice(last), fg, bg, bold, underline, dim });
+  }
+
+  return segments.map(({ text, fg, bg, bold, underline, dim }) => {
+    if (!text) return '';
+    const style = [];
+    if (fg) style.push(`color:${fg}`);
+    if (bg) style.push(`background:${bg}`);
+    if (bold) style.push('font-weight:bold');
+    if (dim) style.push('opacity:0.6');
+    if (underline) style.push('text-decoration:underline');
+    const e = esc(text);
+    return style.length ? `<span style="${style.join(';')}">${e}</span>` : e;
+  }).join('');
+}
+
 function renderTerminal(appId) {
   const app = apps.find((a) => a.id === appId);
   terminalAppName.textContent = app ? app.name : 'Select an app to view output';
   const lines = logsByApp[appId] || [];
-  terminalOutput.textContent = lines.join('\n');
+  terminalOutput.innerHTML = lines.map(ansiToHtml).join('\n');
   terminalOutput.scrollTop = terminalOutput.scrollHeight;
 }
 

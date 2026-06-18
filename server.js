@@ -300,10 +300,20 @@ async function startApp(appId) {
 
   const shell = process.platform === 'win32' ? 'cmd.exe' : '/bin/bash';
   const shellFlag = process.platform === 'win32' ? '/c' : '-lc';
+  // Switch cmd.exe to UTF-8 (code page 65001) so non-ASCII output isn't garbled.
+  const cmd = process.platform === 'win32'
+    ? `chcp 65001 >nul 2>&1 & ${appDef.command}`
+    : appDef.command;
 
-  const child = spawn(shell, [shellFlag, appDef.command], {
+  const child = spawn(shell, [shellFlag, cmd], {
     cwd: appDef.path,
-    env: { ...process.env, FORCE_COLOR: '1', npm_config_color: 'always' },
+    env: {
+      ...process.env,
+      FORCE_COLOR: '1',
+      npm_config_color: 'always',
+      PYTHONIOENCODING: 'utf-8',
+      PYTHONUTF8: '1',
+    },
     windowsHide: true,
   });
 

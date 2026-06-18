@@ -357,7 +357,7 @@ body {
 .terminal-panel {
   flex: 0 0 40%;
   min-width: 0;
-  background: #0b1017;
+  background: #080d12;
   border: 1px solid var(--border);
   border-radius: var(--radius);
   overflow: hidden;
@@ -414,12 +414,26 @@ body {
   padding: 10px 12px;
   overflow: auto;
   font-family: var(--mono);
-  font-size: 0.68rem;
-  line-height: 1.35;
+  font-size: 0.78rem;
+  line-height: 1.5;
   color: #c8d3e0;
   white-space: pre-wrap;
   word-break: break-word;
   min-height: 0;
+  tab-size: 4;
+}
+
+.terminal-output::-webkit-scrollbar {
+  width: 6px;
+}
+
+.terminal-output::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 999px;
+}
+
+.terminal-output::-webkit-scrollbar-thumb:hover {
+  background: #3d4f6a;
 }
 
 .footer {
