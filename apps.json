@@ -1,0 +1,104 @@
+{
+  "dashboard": {
+    "title": "RegPlus Dev Dashboard",
+    "subtitle": "Start, stop, and monitor every RegPlus service from one place"
+  },
+  "apps": [
+    {
+      "id": "regplus-container",
+      "name": "Reg Plus Container",
+      "type": "frontend",
+      "path": "D:\\REGPLUS\\Code\\regpluscontainer",
+      "command": "npm start",
+      "port": "9000"
+    },
+    {
+      "id": "reg-auth",
+      "name": "Reg Auth",
+      "type": "frontend",
+      "path": "D:\\REGPLUS\\Code\\regplusauth",
+      "command": "npm start -- --port 8502",
+      "port": "8502"
+    },
+    {
+      "id": "reg-brief",
+      "name": "Reg Brief",
+      "type": "frontend",
+      "path": "D:\\REGPLUS\\Code\\regbrief\\regbrief",
+      "command": "npm start -- --port 8504",
+      "port": "8504"
+    },
+    {
+      "id": "tpa-client",
+      "name": "TPA Client",
+      "type": "frontend",
+      "path": "D:\\REGPLUS\\Code\\tpaclient",
+      "command": "npm start -- --port 8501",
+      "port": "8501"
+    },
+    {
+      "id": "wta-client",
+      "name": "WTA Client",
+      "type": "frontend",
+      "path": "D:\\REGPLUS\\Code\\wtaclient\\wta-react-client",
+      "command": "npm start -- --port 8500",
+      "port": "8500"
+    },
+    {
+      "id": "company-data",
+      "name": "Company Data",
+      "type": "frontend",
+      "path": "D:\\REGPLUS\\Code\\entitydataviewerclient",
+      "command": "npm start -- --port 8505",
+      "port": "8505"
+    },
+    {
+      "id": "beps-mapper",
+      "name": "BEPS Mapper",
+      "type": "frontend",
+      "path": "D:\\REGPLUS\\Code\\beps\\bepsmapper",
+      "command": "npm start -- --port 8503",
+      "port": "8503"
+    },
+    {
+      "id": "tpa-publisher-client",
+      "name": "TPA Publisher",
+      "type": "publisher",
+      "path": "D:\\REGPLUS\\Code\\tpapublisherclient",
+      "command": "ng serve --port 4200",
+      "port": "4200"
+    },
+    {
+      "id": "wta-publisher-client",
+      "name": "WTA Publisher",
+      "type": "publisher",
+      "path": "D:\\REGPLUS\\Code\\wtapublisherclient",
+      "command": "set PORT=3001 && npm start",
+      "port": "3001"
+    },
+    {
+      "id": "nest-publisher",
+      "name": "Nest Publisher",
+      "type": "publisher",
+      "path": "D:\\REGPLUS\\Code\\nestpublisher",
+      "command": "npm start",
+      "port": "3000"
+    },
+    {
+      "id": "nest-api",
+      "name": "Nest API",
+      "type": "api",
+      "path": "D:\\REGPLUS\\Code\\nest",
+      "command": "dotnet run --project Nest.API",
+      "port": "6001"
+    },
+    {
+      "id": "reg-chatbot-api",
+      "name": "RegChatbot API",
+      "type": "api",
+      "path": "D:\\REGPLUS\\Code\\RegChatbotAPI",
+      "command": "\"C:\\Users\\mukit\\AppData\\Local\\anaconda3\\envs\\chatbotenv\\python.exe\" -m uvicorn main:app --reload",
+      "port": "8000"
+    }
+  ]
+}

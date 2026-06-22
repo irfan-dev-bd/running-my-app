@@ -4,6 +4,12 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>App Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
@@ -22,6 +28,9 @@
               <button id="rescanPortsBtn" class="btn btn-ghost" title="Re-check all configured ports">
                 Rescan Ports
               </button>
+              <button id="refreshBranchesBtn" class="btn btn-ghost" title="Re-check the current git branch of each app">
+                Sync All Git Branches
+              </button>
               <button id="reloadConfigBtn" class="btn btn-ghost" title="Reload config file">
                 Reload Config
               </button>
@@ -37,11 +46,7 @@
             </div>
             <div class="stat running">
               <span class="stat-value" id="runningCount">0</span>
-              <span class="stat-label">Managed</span>
-            </div>
-            <div class="stat external">
-              <span class="stat-value" id="externalCount">0</span>
-              <span class="stat-label">External</span>
+              <span class="stat-label">Running</span>
             </div>
             <div class="stat stopped">
               <span class="stat-value" id="stoppedCount">0</span>
@@ -50,7 +55,7 @@
           </section>
 
           <div class="app-grid-scroll">
-            <div id="appGrid" class="app-grid"></div>
+            <div id="appGrid" class="app-groups"></div>
           </div>
 
           <footer class="footer">
@@ -59,17 +64,26 @@
           </footer>
         </section>
 
+        <div class="resize-handle" id="resizeHandle" title="Drag to resize terminal"></div>
+
         <section class="terminal-panel" id="terminalPanel">
+          <button class="terminal-expand" id="expandTerminalBtn" title="Expand terminal">
+            <span class="terminal-expand-label">Terminal</span>
+          </button>
           <div class="terminal-header">
             <div class="terminal-title">
               <span class="terminal-dot"></span>
-              <span class="terminal-heading">Active Terminal</span>
+              <span class="terminal-heading">Terminal</span>
             </div>
             <div class="terminal-actions">
+              <button id="openAllTerminalsBtn" class="btn btn-ghost btn-sm" title="Open a terminal tab for every app">Open All</button>
+              <button id="closeAllTerminalsBtn" class="btn btn-ghost btn-sm" title="Close all terminal tabs">Close All</button>
+              <button id="copyTerminalBtn" class="btn btn-ghost btn-sm" title="Copy the active terminal output">Copy</button>
               <button id="clearTerminalBtn" class="btn btn-ghost btn-sm">Clear</button>
+              <button id="collapseTerminalBtn" class="btn btn-ghost btn-sm" title="Collapse terminal">Collapse ›</button>
             </div>
           </div>
-          <div class="terminal-app-name" id="terminalAppName">Select an app to view output</div>
+          <div class="terminal-tabs" id="terminalTabs"></div>
           <pre id="terminalOutput" class="terminal-output"></pre>
         </section>
       </div>

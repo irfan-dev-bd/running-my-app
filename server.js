@@ -13,7 +13,7 @@ const { getConfigPath, getUserDataDir } = require('./lib/paths');
 
 const execAsync = promisify(exec);
 
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 9999;
 const MAX_LOG_LINES = 500;
 
 const app = express();
@@ -25,6 +25,10 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 /** @type {Map<string, { proc: import('child_process').ChildProcess | null, externalPid: number | null, status: string, logs: string[], cwd: string, command: string }>} */
 const processes = new Map();
+
+/** @type {Map<string, string | null>} appId -> current git branch (or null if not a repo) */
+const branchCache = new Map();
+const BRANCH_REFRESH_INTERVAL_MS = 30000;
 
 const PORT_CHECK_TIMEOUT_MS = 500;
 const EXTERNAL_SYNC_INTERVAL_MS = 10000;
@@ -68,12 +72,11 @@ function getAppsWithStatus() {
   return config.apps.map((appDef) => {
     const runtime = processes.get(appDef.id);
     const managedPid = runtime?.proc && !runtime.proc.killed ? runtime.proc.pid : null;
-    const external = Boolean(runtime?.status === 'running' && !managedPid);
     return {
       ...appDef,
-      status: external ? 'external' : (runtime?.status ?? 'stopped'),
+      status: runtime?.status ?? 'stopped',
       pid: managedPid ?? runtime?.externalPid ?? null,
-      external,
+      branch: branchCache.get(appDef.id) ?? null,
       logCount: runtime?.logs?.length ?? 0,
     };
   });
@@ -210,6 +213,44 @@ async function syncExternalProcesses(options = {}) {
   return changed;
 }
 
+async function getGitBranch(cwd) {
+  try {
+    const { stdout } = await execAsync('git rev-parse --abbrev-ref HEAD', {
+      cwd,
+      timeout: 4000,
+      windowsHide: true,
+    });
+    const branch = stdout.trim();
+    return branch || null;
+  } catch {
+    return null;
+  }
+}
+
+async function refreshBranches(options = {}) {
+  const { broadcastUpdate = false } = options;
+  const config = configLib.readConfigOrNull();
+  if (!config) return false;
+
+  let changed = false;
+  await Promise.all(
+    config.apps.map(async (appDef) => {
+      const branch =
+        appDef.path && fs.existsSync(appDef.path) ? await getGitBranch(appDef.path) : null;
+      if (branchCache.get(appDef.id) !== branch) {
+        branchCache.set(appDef.id, branch);
+        changed = true;
+      }
+    })
+  );
+
+  if (changed && broadcastUpdate) {
+    broadcast({ type: 'status', apps: getAppsWithStatus() });
+  }
+
+  return changed;
+}
+
 function appendLog(appId, line) {
   const runtime = processes.get(appId);
   if (!runtime) return;
@@ -234,6 +275,19 @@ function setStatus(appId, status) {
     runtime.status = status;
   }
   broadcast({ type: 'status', appId, status, apps: getAppsWithStatus() });
+}
+
+function openBrowser(url) {
+  if (process.env.REG_STARTER_NO_OPEN === '1') return;
+  let cmd;
+  if (process.platform === 'win32') {
+    cmd = `start "" "${url}"`;
+  } else if (process.platform === 'darwin') {
+    cmd = `open "${url}"`;
+  } else {
+    cmd = `xdg-open "${url}"`;
+  }
+  exec(cmd, () => {});
 }
 
 function killProcessTree(pid) {
@@ -315,6 +369,9 @@ async function startApp(appId) {
       PYTHONUTF8: '1',
     },
     windowsHide: true,
+    // On Windows, let cmd.exe parse the command line verbatim so quoted paths
+    // (e.g. "C:\...\python.exe") aren't mangled by Node's argument escaping.
+    windowsVerbatimArguments: process.platform === 'win32',
   });
 
   runtime.proc = child;
@@ -483,7 +540,34 @@ app.get('/api/apps', requireConfigured, async (_req, res) => {
 app.post('/api/rescan-ports', requireConfigured, async (_req, res) => {
   try {
     await syncExternalProcesses({ logDetection: true, broadcastUpdate: true });
+    await refreshBranches({ broadcastUpdate: true });
     res.json({ ok: true, apps: getAppsWithStatus(), dashboard: getDashboardConfig() });
+  } catch (err) {
+    res.status(400).json({ ok: false, error: err.message });
+  }
+});
+
+app.post('/api/refresh-branches', requireConfigured, async (_req, res) => {
+  try {
+    await refreshBranches({ broadcastUpdate: true });
+    res.json({ ok: true, apps: getAppsWithStatus(), dashboard: getDashboardConfig() });
+  } catch (err) {
+    res.status(400).json({ ok: false, error: err.message });
+  }
+});
+
+app.post('/api/apps/:id/refresh-branch', requireConfigured, async (req, res) => {
+  try {
+    const config = readConfig();
+    const appDef = config.apps.find((a) => a.id === req.params.id);
+    if (!appDef) {
+      return res.status(404).json({ ok: false, error: 'App not found' });
+    }
+    const branch =
+      appDef.path && fs.existsSync(appDef.path) ? await getGitBranch(appDef.path) : null;
+    branchCache.set(appDef.id, branch);
+    broadcast({ type: 'status', apps: getAppsWithStatus() });
+    res.json({ ok: true, branch, apps: getAppsWithStatus() });
   } catch (err) {
     res.status(400).json({ ok: false, error: err.message });
   }
@@ -533,6 +617,38 @@ app.post('/api/start-all', requireConfigured, async (_req, res) => {
   res.json({ ok: true, results, apps: getAppsWithStatus() });
 });
 
+app.post('/api/group/:type/:action', requireConfigured, async (req, res) => {
+  const { type, action } = req.params;
+  if (action !== 'start' && action !== 'stop') {
+    return res.status(400).json({ ok: false, error: 'Invalid action' });
+  }
+
+  const config = readConfig();
+  const groupApps = config.apps.filter(
+    (a) => (a.type || 'other').toLowerCase() === type.toLowerCase()
+  );
+
+  if (action === 'stop') {
+    await syncExternalProcesses();
+  }
+
+  const results = [];
+  for (const appDef of groupApps) {
+    try {
+      const result =
+        action === 'start' ? await startApp(appDef.id) : await stopApp(appDef.id);
+      results.push({ id: appDef.id, ok: true, ...result });
+      if (action === 'start') {
+        await new Promise((r) => setTimeout(r, 800));
+      }
+    } catch (err) {
+      results.push({ id: appDef.id, ok: false, error: err.message });
+    }
+  }
+
+  res.json({ ok: true, results, apps: getAppsWithStatus() });
+});
+
 app.post('/api/stop-all', requireConfigured, async (_req, res) => {
   await syncExternalProcesses();
   const config = readConfig();
@@ -557,6 +673,7 @@ app.post('/api/reload-config', requireConfigured, async (_req, res) => {
       ensureRuntime(appDef);
     }
     await syncExternalProcesses();
+    await refreshBranches({ broadcastUpdate: false });
     res.json({ ok: true, apps: getAppsWithStatus(), dashboard: getDashboardConfig() });
   } catch (err) {
     res.status(400).json({ ok: false, error: err.message });
@@ -616,6 +733,7 @@ async function bootstrap() {
       ensureRuntime(appDef);
     }
     await syncExternalProcesses({ logDetection: true, broadcastUpdate: false });
+    await refreshBranches({ broadcastUpdate: false });
   }
 
   server.listen(PORT, () => {
@@ -629,10 +747,17 @@ async function bootstrap() {
     }
     console.log(`Config: ${configPath}`);
 
+    openBrowser(`http://localhost:${PORT}`);
+
     setInterval(() => {
       if (!configLib.isConfigured()) return;
       syncExternalProcesses({ broadcastUpdate: true, logDetection: false }).catch(() => {});
     }, EXTERNAL_SYNC_INTERVAL_MS);
+
+    setInterval(() => {
+      if (!configLib.isConfigured()) return;
+      refreshBranches({ broadcastUpdate: true }).catch(() => {});
+    }, BRANCH_REFRESH_INTERVAL_MS);
   });
 }
 

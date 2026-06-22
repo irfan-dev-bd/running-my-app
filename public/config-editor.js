@@ -9,6 +9,7 @@ const ConfigEditor = {
         {
           id: '',
           name: '',
+          type: 'frontend',
           path: '',
           command: 'npm start',
           port: '',
@@ -87,6 +88,7 @@ const ConfigEditor = {
     const apps = rows.map((row) => ({
       id: row.querySelector('[name="appId"]').value.trim(),
       name: row.querySelector('[name="appName"]').value.trim(),
+      type: row.querySelector('[name="appType"]').value.trim(),
       path: row.querySelector('[name="appPath"]').value.trim(),
       command: row.querySelector('[name="appCommand"]').value.trim(),
       port: row.querySelector('[name="appPort"]').value.trim(),
@@ -130,6 +132,17 @@ const ConfigEditor = {
                   <span>Name</span>
                   <input type="text" name="appName" value="${this.escapeHtml(app.name || '')}" required />
                 </label>
+                <label class="field field-narrow">
+                  <span>Type</span>
+                  <select name="appType">
+                    ${['frontend', 'publisher', 'api', 'other']
+                      .map((t) => {
+                        const current = (app.type || 'frontend').toLowerCase();
+                        return `<option value="${t}" ${current === t ? 'selected' : ''}>${t}</option>`;
+                      })
+                      .join('')}
+                  </select>
+                </label>
                 <label class="field field-grow">
                   <span>Path</span>
                   <div class="path-input">
@@ -169,7 +182,7 @@ const ConfigEditor = {
 
     container.querySelector('#addAppRowBtn').addEventListener('click', () => {
       const configFromForm = this.readManualForm(form);
-      configFromForm.apps.push({ id: '', name: '', path: '', command: 'npm start', port: '' });
+      configFromForm.apps.push({ id: '', name: '', type: 'frontend', path: '', command: 'npm start', port: '' });
       this.renderManualForm(container, configFromForm, onChange);
     });
 
@@ -222,6 +235,7 @@ const ConfigEditor = {
           <thead>
             <tr>
               <th>Name</th>
+              <th>Type</th>
               <th>Path</th>
               <th>Command</th>
               <th>Port</th>
@@ -233,6 +247,7 @@ const ConfigEditor = {
                 (app) => `
               <tr>
                 <td>${this.escapeHtml(app.name)}</td>
+                <td>${this.escapeHtml(app.type || 'frontend')}</td>
                 <td><code>${this.escapeHtml(app.path)}</code></td>
                 <td><code>${this.escapeHtml(app.command)}</code></td>
                 <td>${app.port ?? '—'}</td>
